@@ -44,20 +44,32 @@ class _SSHFormState extends State<SSHForm> {
                   TextFormField(
                     controller: _address,
                     keyboardType: TextInputType.number,
+                    validator: (value) {
+                      RegExp exp = RegExp(r"\d{1,3}\.\d{1,3}\.\d{1,3}.\d{1,3}");
+                      return exp.hasMatch(value)
+                          ? null
+                          : 'Introduce una IP válida';
+                    },
                   ),
                   Text('Username'),
                   TextFormField(
                     controller: _name,
+                    validator: (value) =>
+                        value == '' ? 'Introduce el nombre de usuario' : null,
                   ),
                   Text('Password'),
                   TextFormField(
                     controller: _password,
                     obscureText: true,
+                    validator: (value) =>
+                        value == '' ? 'Introduce la contraseña' : null,
                   ),
                   Text('Port'),
                   TextFormField(
                     controller: _port,
                     keyboardType: TextInputType.number,
+                    validator: (value) =>
+                        value == '' ? 'Introduce un puerto' : null,
                   ),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
@@ -66,16 +78,18 @@ class _SSHFormState extends State<SSHForm> {
                         icon: Icon(Icons.save),
                         label: Text('Save'),
                         onPressed: () async {
-                          final prefs = await SharedPreferences.getInstance();
-                          prefs.setString('ssh_address', _address.text);
-                          prefs.setString('ssh_username', _name.text);
-                          prefs.setString('ssh_password', _password.text);
-                          prefs.setInt('ssh_port', int.parse(_port.text));
-                          if (!Navigator.of(context).canPop())
-                            Navigator.of(context).pushReplacementNamed(
-                                HomeScreen.HomeScreenRoute);
-                          else
-                            Navigator.of(context).pop();
+                          if (_formKey.currentState.validate()) {
+                            final prefs = await SharedPreferences.getInstance();
+                            prefs.setString('ssh_address', _address.text);
+                            prefs.setString('ssh_username', _name.text);
+                            prefs.setString('ssh_password', _password.text);
+                            prefs.setInt('ssh_port', int.parse(_port.text));
+                            if (!Navigator.of(context).canPop())
+                              Navigator.of(context).pushReplacementNamed(
+                                  HomeScreen.HomeScreenRoute);
+                            else
+                              Navigator.of(context).pop();
+                          }
                         },
                       ),
                     ],
