@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cast/screens/SetSSHScreen.dart';
+import 'package:cast/pi.dart';
 
 class HomeScreen extends StatefulWidget {
   static const HomeScreenRoute = '/Home';
@@ -11,13 +12,12 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const platform = const MethodChannel('app.channel.shared.data');
-  String dataShared = 'noData';
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    getSharedText();
+    _checkSharedData();
   }
 
   @override
@@ -28,16 +28,23 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) getSharedText();
+    if (state == AppLifecycleState.resumed) _checkSharedData();
   }
 
-  getSharedText() async {
+  _checkSharedData() async {
     final sharedData = await platform.invokeMethod('getSharedText');
     if (sharedData != null) {
-      setState(() {
-        dataShared = sharedData;
-      });
+      final pi = Pi();
+      final urlExtracted = _extractUrl(sharedData);
+      pi.castVideo(urlExtracted);
     }
+  }
+
+  String _extractUrl(String str) {
+    RegExp regExp = new RegExp(r"(http.+)(\s|$)");
+
+    final match = regExp.firstMatch(str);
+    return match.group(0);
   }
 
   @override
@@ -55,7 +62,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         ],
       ),
       body: Center(
-        child: Text(dataShared),
+        child: Column(
+          children: <Widget>[Text(':)')],
+        ),
       ),
     );
   }
