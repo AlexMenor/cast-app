@@ -1,7 +1,11 @@
+import 'package:flutter/widgets.dart';
 import 'package:ssh/ssh.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class Pi {
+enum StreamCommand { PLAY, STOP }
+enum PiState { LOADING, STOPPED, PLAYING, PAUSED }
+
+class Pi with ChangeNotifier {
   // Singleton
 
   Pi._internal();
@@ -11,35 +15,72 @@ class Pi {
     return _pi;
   }
 
-  // SSH PREFERENCES
-  String _ip;
-  String _username;
-  String _password;
-  int _port;
+  // SSH CLIENT
+  SSHClient _client;
+
+  //State
+  PiState _state = PiState.STOPPED;
 
   _updatePrefs() async {
     final prefs = await SharedPreferences.getInstance();
 
-    _ip = prefs.getString('ssh_address');
-    _username = prefs.getString('ssh_username');
-    _password = prefs.getString('ssh_password');
-    _port = prefs.getInt('ssh_port');
-  }
+    final ip = prefs.getString('ssh_address');
+    final username = prefs.getString('ssh_username');
+    final password = prefs.getString('ssh_password');
+    final port = prefs.getInt('ssh_port');
 
-  SSHClient _getSSHClient() {
-    return new SSHClient(
-      host: _ip,
-      username: _username,
-      passwordOrKey: _password,
-      port: _port,
+    _client = new SSHClient(
+      host: ip,
+      username: username,
+      passwordOrKey: password,
+      port: port,
     );
   }
 
-  castVideo(String videoUrl) async {
-    await _updatePrefs();
-    final client = _getSSHClient();
-    await client.connect();
+  PiState get state {
+    return _state;
+  }
 
-    client.execute('omxplayer \$(youtube-dl -g $videoUrl -f best)');
+  void _handleShellOutput(dynamic line) {
+    print(line);
+    RegExp regExp = new RegExp(r"^Video codec");
+
+    if (regExp.hasMatch(line)) {
+      _state = PiState.PLAYING;
+      notifyListeners();
+    }
+  }
+
+  _cleanConnection() async {
+    // closeShell is not working at the moment
+    await _client.disconnect();
+  }
+
+  startStreaming(String videoUrl) async {
+    await _updatePrefs();
+    await _client.connect();
+
+    await _client.startShell(callback: _handleShellOutput);
+
+    await _client
+        .writeToShell('omxplayer \$(youtube-dl -g $videoUrl -f best)\n');
+    _state = PiState.LOADING;
+    notifyListeners();
+  }
+
+  sendCommand(StreamCommand cmd) async {
+    if (_state != PiState.PLAYING && _state != PiState.PAUSED)
+      throw ("There's no stream live");
+    else {
+      if (cmd == StreamCommand.PLAY) {
+        await _client.writeToShell('p');
+        _state = _state == PiState.PLAYING ? PiState.PAUSED : PiState.PLAYING;
+      } else if (cmd == StreamCommand.STOP) {
+        await _client.writeToShell('q');
+        await _cleanConnection();
+        _state = PiState.STOPPED;
+      }
+      notifyListeners();
+    }
   }
 }

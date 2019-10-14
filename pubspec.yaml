@@ -21,7 +21,8 @@ dependencies:
     sdk: flutter
   cupertino_icons: ^0.1.2
   shared_preferences: ^0.5.3+4
-  ssh: ^0.0.4
+  ssh: ^0.0.5
+  provider: ^3.1.0
 
 dev_dependencies:
   flutter_test:

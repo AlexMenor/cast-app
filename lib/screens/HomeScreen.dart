@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cast/screens/SetSSHScreen.dart';
 import 'package:cast/pi.dart';
+import 'package:provider/provider.dart';
 
 class HomeScreen extends StatefulWidget {
   static const HomeScreenRoute = '/Home';
@@ -36,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (sharedData != null) {
       final pi = Pi();
       final urlExtracted = _extractUrl(sharedData);
-      pi.castVideo(urlExtracted);
+      pi.startStreaming(urlExtracted);
     }
   }
 
@@ -61,9 +62,39 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           )
         ],
       ),
-      body: Center(
-        child: Column(
-          children: <Widget>[Text(':)')],
+      body: ChangeNotifierProvider.value(
+        value: Pi(),
+        child: Consumer<Pi>(
+          builder: (context, pi, _) {
+            if (pi.state == PiState.LOADING)
+              return Center(child: CircularProgressIndicator());
+            else if (pi.state == PiState.STOPPED)
+              return Center(child: Text('Share a video to this app to start'));
+            else {
+              return Column(
+                children: <Widget>[
+                  Row(
+                    children: <Widget>[
+                      IconButton(
+                        icon: Icon(pi.state == PiState.PLAYING
+                            ? Icons.pause
+                            : Icons.play_arrow),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.PLAY);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.exit_to_app),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.STOP);
+                        },
+                      )
+                    ],
+                  )
+                ],
+              );
+            }
+          },
         ),
       ),
     );
