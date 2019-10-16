@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:ssh/ssh.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 
 enum StreamCommand { PLAY, STOP }
 enum PiState { LOADING, STOPPED, PLAYING, PAUSED }
@@ -20,6 +21,8 @@ class Pi with ChangeNotifier {
 
   //State
   PiState _state = PiState.STOPPED;
+  Duration _videoDuration;
+  Duration _timeElapsed;
 
   _updatePrefs() async {
     final prefs = await SharedPreferences.getInstance();
@@ -41,14 +44,61 @@ class Pi with ChangeNotifier {
     return _state;
   }
 
+  String get hoursDuration {
+    return _videoDuration.inHours.toString();
+  }
+
+  String get minutesDuration {
+    return (_videoDuration.inMinutes % 60).toString();
+  }
+
+  String get secondsDuration {
+    return (_videoDuration.inSeconds % 60).toString();
+  }
+
+  String get hoursElapsed {
+    return _timeElapsed.inHours.toString();
+  }
+
+  String get minutesElapsed {
+    return (_timeElapsed.inHours % 60).toString();
+  }
+
+  String get secondsElapsed {
+    return (_timeElapsed.inSeconds % 60).toString();
+  }
+
+  void _refreshElapsedTime(timer) {
+    if (_state == PiState.PLAYING) {
+      _timeElapsed += Duration(seconds: 1);
+      notifyListeners();
+    } else if (_state == PiState.STOPPED) timer.cancel();
+  }
+
+  void _setTimer() {
+    _timeElapsed = Duration();
+    Timer.periodic(Duration(seconds: 1), _refreshElapsedTime);
+  }
+
   void _handleShellOutput(dynamic line) {
     print(line);
-    RegExp regExp = new RegExp(r"^Video codec");
+    RegExp regExpPlaying = new RegExp(r"^Video codec");
+    RegExp regExpDuration =
+        new RegExp(r"\bDuration:\s(\d{2}):(\d{2}):(\d{2})\.");
 
-    if (regExp.hasMatch(line)) {
+    if (regExpPlaying.hasMatch(line)) {
       _state = PiState.PLAYING;
-      notifyListeners();
+      _setTimer();
+    } else if (regExpDuration.hasMatch(line)) {
+      final match = regExpDuration.firstMatch(line);
+
+      final hours = int.parse(match[1]);
+      final minutes = int.parse(match[2]);
+      final seconds = int.parse(match[3]);
+      _videoDuration =
+          Duration(hours: hours, minutes: minutes, seconds: seconds);
     }
+    notifyListeners();
   }
 
   _cleanConnection() async {
@@ -63,7 +113,7 @@ class Pi with ChangeNotifier {
     await _client.startShell(callback: _handleShellOutput);
 
     await _client
-        .writeToShell('omxplayer \$(youtube-dl -g $videoUrl -f best)\n');
+        .writeToShell('omxplayer -I \$(youtube-dl -g $videoUrl -f best)\n');
     _state = PiState.LOADING;
     notifyListeners();
   }

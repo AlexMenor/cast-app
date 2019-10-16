@@ -88,7 +88,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                         onPressed: () {
                           pi.sendCommand(StreamCommand.STOP);
                         },
-                      )
+                      ),
+                      Text(
+                          '${pi.hoursElapsed}:${pi.minutesElapsed}:${pi.secondsElapsed}/'),
+                      Text(
+                          '${pi.hoursDuration}:${pi.minutesDuration}:${pi.secondsDuration}')
                     ],
                   )
                 ],
