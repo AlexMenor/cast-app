@@ -46,14 +46,19 @@ class Pi with ChangeNotifier {
   }
 
   String get timeElapsed {
-    return "${_timeElapsed.inHours}:${_timeElapsed.inMinutes % 60}:${_timeElapsed.inSeconds % 60}";
+    return "${_formatTime(_timeElapsed.inHours)}:${_formatTime(_timeElapsed.inMinutes % 60)}:${_formatTime(_timeElapsed.inSeconds % 60)}";
   }
 
   String get duration {
     if (isLiveStreaming)
       return "";
     else
-      return "${_videoDuration.inHours}:${_videoDuration.inMinutes % 60}:${_videoDuration.inSeconds % 60}";
+      return "${_formatTime(_videoDuration.inHours)}:${_formatTime(_videoDuration.inMinutes % 60)}:${_formatTime(_videoDuration.inSeconds % 60)}";
+  }
+
+  String _formatTime(int input) {
+    final s = input.toString();
+    return s.length < 2 ? "0" + s : s;
   }
 
   bool get isLiveStreaming {
