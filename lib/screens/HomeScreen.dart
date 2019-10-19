@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cast/screens/SetSSHScreen.dart';
+import 'package:cast/widgets/VideoThumbnail.dart';
 import 'package:cast/pi.dart';
 import 'package:provider/provider.dart';
 
@@ -13,7 +14,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   static const platform = const MethodChannel('app.channel.shared.data');
-
+  String _extractedUrl;
   @override
   void initState() {
     super.initState();
@@ -36,8 +37,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     final sharedData = await platform.invokeMethod('getSharedText');
     if (sharedData != null) {
       final pi = Pi();
-      final urlExtracted = _extractUrl(sharedData);
-      pi.startStreaming(urlExtracted);
+      _extractedUrl = _extractUrl(sharedData);
+      pi.startStreaming(_extractedUrl);
     }
   }
 
@@ -72,52 +73,91 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               return Center(child: Text('Share a video to this app to start'));
             else {
               return Column(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: <Widget>[
-                  Row(
-                    children: <Widget>[
-                      IconButton(
-                        icon: Icon(pi.state == PiState.PLAYING
-                            ? Icons.pause
-                            : Icons.play_arrow),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.PLAY);
-                        },
+                  VideoThumbnail(_extractedUrl),
+                  Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: Card(
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Container(
+                        padding: const EdgeInsets.all(30.0),
+                        child: Column(
+                          children: <Widget>[
+                            if (!pi.isLiveStreaming)
+                              Container(
+                                margin: const EdgeInsets.only(bottom: 28.0),
+                                child:
+                                    Text(pi.timeElapsed + ' / ' + pi.duration),
+                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: <Widget>[
+                                if (!pi.isLiveStreaming)
+                                  IconButton(
+                                    icon: Icon(Icons.replay_30),
+                                    onPressed: () {
+                                      pi.sendCommand(StreamCommand.BACKWARD);
+                                    },
+                                  ),
+                                FloatingActionButton(
+                                  splashColor: Theme.of(context).primaryColor,
+                                  child: Icon(pi.state == PiState.PLAYING
+                                      ? Icons.pause
+                                      : Icons.play_arrow),
+                                  onPressed: () {
+                                    pi.sendCommand(StreamCommand.PLAY);
+                                  },
+                                ),
+                                if (!pi.isLiveStreaming)
+                                  IconButton(
+                                    icon: Icon(Icons.forward_30),
+                                    onPressed: () {
+                                      pi.sendCommand(StreamCommand.FORWARD);
+                                    },
+                                  ),
+                              ],
+                            ),
+                            Container(
+                              margin: EdgeInsets.only(top: 20),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceAround,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: Icon(Icons.stop),
+                                    color: Theme.of(context).errorColor,
+                                    onPressed: () {
+                                      pi.sendCommand(StreamCommand.STOP);
+                                    },
+                                  ),
+                                  Row(
+                                    children: <Widget>[
+                                      IconButton(
+                                        icon: Icon(Icons.volume_down),
+                                        onPressed: () {
+                                          pi.sendCommand(
+                                              StreamCommand.VOLUMEDOWN);
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.volume_up),
+                                        onPressed: () {
+                                          pi.sendCommand(
+                                              StreamCommand.VOLUMEUP);
+                                        },
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            )
+                          ],
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.exit_to_app),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.STOP);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.volume_up),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.VOLUMEUP);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.volume_down),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.VOLUMEDOWN);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.forward_30),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.FORWARD);
-                        },
-                      ),
-                      IconButton(
-                        icon: Icon(Icons.replay_30),
-                        onPressed: () {
-                          pi.sendCommand(StreamCommand.BACKWARD);
-                        },
-                      ),
-                    ],
+                    ),
                   ),
-                  Row(
-                    children: <Widget>[Text(pi.timeElapsed), Text(pi.duration)],
-                  )
                 ],
               );
             }

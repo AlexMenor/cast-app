@@ -15,7 +15,7 @@ class MyApp extends StatelessWidget {
             ? MaterialApp(
                 title: 'Flutter Demo',
                 theme: ThemeData(
-                  primarySwatch: Colors.blue,
+                  primarySwatch: Colors.blueGrey,
                 ),
                 home: snapshot.data.containsKey('ssh_address')
                     ? HomeScreen()
