@@ -89,11 +89,34 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                           pi.sendCommand(StreamCommand.STOP);
                         },
                       ),
-                      Text(
-                          '${pi.hoursElapsed}:${pi.minutesElapsed}:${pi.secondsElapsed}/'),
-                      Text(
-                          '${pi.hoursDuration}:${pi.minutesDuration}:${pi.secondsDuration}')
+                      IconButton(
+                        icon: Icon(Icons.volume_up),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.VOLUMEUP);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.volume_down),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.VOLUMEDOWN);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.forward_30),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.FORWARD);
+                        },
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.replay_30),
+                        onPressed: () {
+                          pi.sendCommand(StreamCommand.BACKWARD);
+                        },
+                      ),
                     ],
+                  ),
+                  Row(
+                    children: <Widget>[Text(pi.timeElapsed), Text(pi.duration)],
                   )
                 ],
               );

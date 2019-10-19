@@ -3,7 +3,7 @@ import 'package:ssh/ssh.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
-enum StreamCommand { PLAY, STOP }
+enum StreamCommand { PLAY, STOP, VOLUMEUP, VOLUMEDOWN, FORWARD, BACKWARD }
 enum PiState { LOADING, STOPPED, PLAYING, PAUSED }
 
 class Pi with ChangeNotifier {
@@ -23,6 +23,7 @@ class Pi with ChangeNotifier {
   PiState _state = PiState.STOPPED;
   Duration _videoDuration;
   Duration _timeElapsed;
+  bool _isLiveStreaming = false;
 
   _updatePrefs() async {
     final prefs = await SharedPreferences.getInstance();
@@ -44,28 +45,19 @@ class Pi with ChangeNotifier {
     return _state;
   }
 
-  String get hoursDuration {
-    return _videoDuration.inHours.toString();
+  String get timeElapsed {
+    return "${_timeElapsed.inHours}:${_timeElapsed.inMinutes % 60}:${_timeElapsed.inSeconds % 60}";
   }
 
-  String get minutesDuration {
-    return (_videoDuration.inMinutes % 60).toString();
+  String get duration {
+    if (isLiveStreaming)
+      return "";
+    else
+      return "${_videoDuration.inHours}:${_videoDuration.inMinutes % 60}:${_videoDuration.inSeconds % 60}";
   }
 
-  String get secondsDuration {
-    return (_videoDuration.inSeconds % 60).toString();
-  }
-
-  String get hoursElapsed {
-    return _timeElapsed.inHours.toString();
-  }
-
-  String get minutesElapsed {
-    return (_timeElapsed.inHours % 60).toString();
-  }
-
-  String get secondsElapsed {
-    return (_timeElapsed.inSeconds % 60).toString();
+  bool get isLiveStreaming {
+    return _isLiveStreaming;
   }
 
   void _refreshElapsedTime(timer) {
@@ -80,11 +72,13 @@ class Pi with ChangeNotifier {
     Timer.periodic(Duration(seconds: 1), _refreshElapsedTime);
   }
 
-  void _handleShellOutput(dynamic line) {
+  _handleShellOutput(dynamic line) async {
     print(line);
     RegExp regExpPlaying = new RegExp(r"^Video codec");
     RegExp regExpDuration =
         new RegExp(r"\bDuration:\s(\d{2}):(\d{2}):(\d{2})\.");
+    RegExp regExpStopped = new RegExp(r"^have a nice day");
+    RegExp regExpLiveStreaming = new RegExp(r"\bDuration: N/A");
 
     if (regExpPlaying.hasMatch(line)) {
       _state = PiState.PLAYING;
@@ -97,6 +91,12 @@ class Pi with ChangeNotifier {
       final seconds = int.parse(match[3]);
       _videoDuration =
           Duration(hours: hours, minutes: minutes, seconds: seconds);
+    } else if (regExpStopped.hasMatch(line) && _state != PiState.STOPPED) {
+      await _client.writeToShell('q');
+      await _cleanConnection();
+      _state = PiState.STOPPED;
+    } else if (regExpLiveStreaming.hasMatch(line)) {
+      _isLiveStreaming = true;
     }
     notifyListeners();
   }
@@ -129,6 +129,22 @@ class Pi with ChangeNotifier {
         await _client.writeToShell('q');
         await _cleanConnection();
         _state = PiState.STOPPED;
+      } else if (cmd == StreamCommand.VOLUMEUP) {
+        await _client.writeToShell('+');
+      } else if (cmd == StreamCommand.VOLUMEDOWN) {
+        await _client.writeToShell('-');
+      } else if (cmd == StreamCommand.FORWARD) {
+        if (!_isLiveStreaming &&
+            _timeElapsed.inSeconds + 30 < _videoDuration.inSeconds) {
+          await _client.writeToShell('^[[C');
+          _timeElapsed += Duration(seconds: 30);
+        }
+      } else if (cmd == StreamCommand.BACKWARD) {
+        if (!_isLiveStreaming) {
+          await _client.writeToShell('^[[D');
+          _timeElapsed -= Duration(seconds: 30);
+          if (_timeElapsed.inSeconds < 0) _timeElapsed = Duration(seconds: 0);
+        }
       }
       notifyListeners();
     }
