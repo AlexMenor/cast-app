@@ -1,4 +1,4 @@
-# Cast
+# Cast App
 
 ![Cast screenshot](https://i.postimg.cc/mZ8JXWnc/Screenshot-20191027-153349.jpg)
 
@@ -17,3 +17,8 @@ sudo curl -L https://yt-dl.org/downloads/latest/youtube-dl -o /usr/local/bin/you
 
 sudo chmod a+rx /usr/local/bin/youtube-dl
 ```
+
+## Current compatiblity
+
+- Youtube
+- Twitch
